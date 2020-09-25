@@ -22,8 +22,8 @@ This is more of a compilation of information and configs from various repositori
 | **HDMI** | ✅ Working |  |
 | **Graphics** | 🔶 Only Intel HD Graphics 4400 |  |
 | **Amd r7 m265** | ❌ Not working |  |
-| **Speakers and Headphones** | ✅ Working | To permanently fix headphones follow the instructions [here](### 🔈 Audio) |
-| **Wi-Fi/BT** | 🔶 Working, but not OOB | The stock Killer card must be replaced with a compatible one. See [here](### 📶 Wi-Fi/Bluetooth) |
+| **Speakers and Headphones** | ✅ Working | To permanently fix headphones follow the instructions [here](#-audio) |
+| **Wi-Fi/BT** | 🔶 Working, but not OOB | The stock Killer card must be replaced with a compatible one. See [here](#-wi-fibluetooth) |
 
 
 ### 🔈 Audio
