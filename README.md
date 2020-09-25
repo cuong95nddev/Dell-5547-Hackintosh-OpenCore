@@ -10,6 +10,14 @@ This is more of a compilation of information and configs from various repositori
 
 | Feature | Status | Notes |
 | ------------- | ------------- | ------------- |
-| **Demo** | ✅ Working | description |
-| **Demo** | 🔶 Working | description |
-| **Demo** | ❌ Not working | description |
+| **Backlight Controls** | ✅ Working |  |
+| **Battery** | ✅ Working |  |
+| **imessage, app store, etc.** | ✅ Working |  |
+| **All 3 usb ports** | ✅ Working |  |
+| **Keyboard** | ✅ Working |  |
+| **Trackpad** | ✅ Working |  |
+| **Ethernet** | ✅ Working |  |
+| **Webcam** | ✅ Working |  |
+| **HDMI** | ✅ Working |  |
+| **Graphics** | 🔶 Only Intel HD Graphics 4400 |  |
+| **Amd r7 m265** | ❌ Not working |  |
