@@ -31,3 +31,6 @@ By default, the audio can be a bit buggy. When using headphones, after some time
 
 ### 📶 Wi-Fi/Bluetooth
 Iam using this USB WIFI https://www.tp-link.com/vn/home-networking/adapter/archer-t2u/.
+
+### Shutdown/Sleep/Restart
+This issues was fixed! Check the [**Management-Engine-Firmware**](https://github.com/anhbinhvodanh/Dell-5547-Hackintosh/tree/master/Management-Engine-Firmware) folder!
