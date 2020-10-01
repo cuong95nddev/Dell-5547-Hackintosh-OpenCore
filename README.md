@@ -1,7 +1,7 @@
 ![Desktop](Images/Desktop.png)
 ![HDMI](Images/HDMI.png)
 
-# Dell 5547 Catalina (and Big Sur)
+# Dell 5547 Catalina
 A collection of all resources needed to run macOS Catalina or Big Sur on a Dell 5547
 
 ## 🔍 Overview
