@@ -15,8 +15,7 @@ except ImportError:
     from tkinter import filedialog as fd
     from tkinter import messagebox as mb
     from itertools import zip_longest as izip
-sys.path.append(os.path.abspath(os.path.dirname(os.path.realpath(__file__))))
-import plist
+from . import plist
 
 try:
     long
@@ -301,6 +300,7 @@ class PlistWindow(tk.Toplevel):
         # Bind right click
         if str(sys.platform) == "darwin":
             self._tree.bind("<ButtonRelease-2>", self.popup) # ButtonRelease-2 on mac
+            self._tree.bind("<Control-ButtonRelease-1>", self.popup) # Ctrl+Left Click on mac
         else:
             self._tree.bind("<ButtonRelease-3>", self.popup)
 
@@ -325,30 +325,29 @@ class PlistWindow(tk.Toplevel):
         # Setup menu bar (hopefully per-window) - only happens on non-mac systems
         if not str(sys.platform) == "darwin":
             key="Control"
-            sign = "Ctrl+"
             main_menu = tk.Menu(self)
             file_menu = tk.Menu(self, tearoff=0)
             main_menu.add_cascade(label="File", menu=file_menu)
-            file_menu.add_command(label="New ({}N)".format(sign), command=self.controller.new_plist)
-            file_menu.add_command(label="Open ({}O)".format(sign), command=self.controller.open_plist)
-            file_menu.add_command(label="Save ({}S)".format(sign), command=self.controller.save_plist)
-            file_menu.add_command(label="Save As ({}Shift+S)".format(sign), command=self.controller.save_plist_as)
-            file_menu.add_command(label="Duplicate ({}D)".format(sign), command=self.controller.duplicate_plist)
-            file_menu.add_command(label="Reload From Disk ({}L)".format(sign), command=self.reload_from_disk)
+            file_menu.add_command(label="New", command=self.controller.new_plist, accelerator="Ctrl+N")
+            file_menu.add_command(label="Open", command=self.controller.open_plist, accelerator="Ctrl+O")
+            file_menu.add_command(label="Save", command=self.controller.save_plist, accelerator="Ctrl+S")
+            file_menu.add_command(label="Save As...", command=self.controller.save_plist_as, accelerator="Ctrl+Shift+S")
+            file_menu.add_command(label="Duplicate", command=self.controller.duplicate_plist, accelerator="Ctrl+D")
+            file_menu.add_command(label="Reload From Disk", command=self.reload_from_disk, accelerator="Ctrl+L")
             file_menu.add_separator()
-            file_menu.add_command(label="OC Snapshot ({}R)".format(sign), command=self.oc_snapshot)
-            file_menu.add_command(label="OC Clean Snapshot ({}Shift+R)".format(sign), command=self.oc_clean_snapshot)
+            file_menu.add_command(label="OC Snapshot", command=self.oc_snapshot, accelerator="Ctrl+R")
+            file_menu.add_command(label="OC Clean Snapshot", command=self.oc_clean_snapshot, accelerator="Ctrl+Shift+R")
             file_menu.add_separator()
-            file_menu.add_command(label="Convert Window ({}T)".format(sign), command=self.controller.show_convert)
-            file_menu.add_command(label="Strip Comments ({}M)".format(sign), command=self.strip_comments)
+            file_menu.add_command(label="Convert Window", command=self.controller.show_convert, accelerator="Ctrl+T")
+            file_menu.add_command(label="Strip Comments", command=self.strip_comments, accelerator="Ctrl+M")
+            file_menu.add_command(label="Strip Disabled Entries", command=self.strip_disabled, accelerator="Ctrl+E")
             file_menu.add_separator()
-            file_menu.add_command(label="Settings ({},)".format(sign),command=self.controller.show_settings)
+            file_menu.add_command(label="Settings",command=self.controller.show_settings, accelerator="Ctrl+,")
             file_menu.add_separator()
-            file_menu.add_command(label="Toggle Find/Replace Pane ({}F)".format(sign),command=self.hide_show_find)
-            file_menu.add_command(label="Toggle Plist/Data Type Pane ({}P)".format(sign),command=self.hide_show_type)
-            if not str(sys.platform) == "darwin":
-                file_menu.add_separator()
-                file_menu.add_command(label="Quit ({}Q)".format(sign), command=self.controller.quit)
+            file_menu.add_command(label="Toggle Find/Replace Pane",command=self.hide_show_find, accelerator="Ctrl+F")
+            file_menu.add_command(label="Toggle Plist/Data Type Pane",command=self.hide_show_type, accelerator="Ctrl+P")
+            file_menu.add_separator()
+            file_menu.add_command(label="Quit", command=self.controller.quit, accelerator="Ctrl+Q")
             self.config(menu=main_menu)
 
         # Get the right click menu options
@@ -839,32 +838,36 @@ class PlistWindow(tk.Toplevel):
             if not os.path.isdir(kdir):
                 continue
             kdict = {
+                "Arch":"Any",
+                "BundlePath":parent+"/"+x if len(parent) else x,
                 "Comment":"",
                 "Enabled":True,
                 "MaxKernel":"",
                 "MinKernel":"",
-                "BundlePath":parent+"/"+x if len(parent) else x,
                 "ExecutablePath":""
             }
             kinfo = {}
-            # Should be valid-ish - let's check for a binary
-            binpath = os.path.join(kdir,"Contents","MacOS",os.path.splitext(x)[0])
-            if os.path.exists(binpath):
-                kdict["ExecutablePath"] = "Contents/MacOS/"+os.path.splitext(x)[0]
             # Get the Info.plist
+            plist_rel_path = plist_full_path = None
             if os.path.exists(os.path.join(kdir,"Contents","Info.plist")):
-                kdict["PlistPath"] = "Contents/Info.plist"
-                try:
-                    with open(os.path.join(kdir,"Contents","Info.plist"),"rb") as f:
-                        info_plist = plist.load(f)
-                    kinfo["CFBundleIdentifier"] = info_plist.get("CFBundleIdentifier",None)
-                    kinfo["OSBundleLibraries"] = info_plist.get("OSBundleLibraries",[])
-                except: pass
+                plist_rel_path  = "Contents/Info.plist"
+                plist_full_path = os.path.join(kdir,"Contents","Info.plist")
             elif os.path.exists(os.path.join(kdir,"Info.plist")):
-                kdict["PlistPath"] = "Info.plist"
-            if not kdict.get("PlistPath"):
-                # We have at least an Info.plist
-                continue
+                plist_rel_path  = "Info.plist"
+                plist_full_path = os.path.join(kdir,"Info.plist")
+            if plist_rel_path == None: continue # Needs *at least* a valid Info.plist
+            kdict["PlistPath"] = plist_rel_path
+            # Let's load the plist and check for other info
+            try:
+                with open(plist_full_path,"rb") as f:
+                    info_plist = plist.load(f)
+                kinfo["CFBundleIdentifier"] = info_plist.get("CFBundleIdentifier",None)
+                kinfo["OSBundleLibraries"] = info_plist.get("OSBundleLibraries",[])
+                if info_plist.get("CFBundleExecutable",None):
+                    if not os.path.exists(os.path.join(kdir,"Contents","MacOS",info_plist["CFBundleExecutable"])):
+                        continue # Requires an executable that doesn't exist - bail
+                    kdict["ExecutablePath"] = "Contents/MacOS/"+info_plist["CFBundleExecutable"]
+            except: continue # Something else broke here - bail
             # Should have something here
             kexts.append((kdict,kinfo))
             # Check if we have a PlugIns folder
@@ -1013,11 +1016,14 @@ class PlistWindow(tk.Toplevel):
                 "parents":parents
             })
         ordered_kexts = []
+        disabled_parents = []
         while len(unordered_kexts): # This could be dangerous if things aren't properly prepared above
             kext = unordered_kexts.pop(0)
-            if len(kext["parents"]) and not all(x in ordered_kexts for x in kext["parents"]):
-                unordered_kexts.append(kext)
-                continue
+            if len(kext["parents"]):
+                disabled_parents.extend([x.get("BundlePath","") for x in kext["parents"] if x.get("Enabled",True) == False and not x.get("BundlePath","") in disabled_parents])
+                if not all(x in ordered_kexts for x in kext["parents"]):
+                    unordered_kexts.append(kext)
+                    continue
             ordered_kexts.append(next(x for x in new_kexts if x.get("BundlePath","") == kext["kext"].get("BundlePath","")))
         # Let's compare against the original load order - to prevent mis-prompting
         missing_kexts = [x for x in ordered_kexts if not x in original_kexts]
@@ -1034,13 +1040,17 @@ class PlistWindow(tk.Toplevel):
         if len(rearranged):
             if not mb.askyesno("Incorrect Kext Load Order","Correct the following kext load inheritance issues?\n\n{}".format("\n".join(rearranged)),parent=self):
                 ordered_kexts = original_kexts # We didn't want to update it
+        if len(disabled_parents):
+            if mb.askyesno("Disabled Parent Kexts","Enable the following disabled parent kexts?\n\n{}".format("\n".join(disabled_parents)),parent=self):
+                for x in ordered_kexts: # Walk our kexts and enable the parents
+                    if x.get("BundlePath","") in disabled_parents: x["Enabled"] = True
 
         tree_dict["Kernel"]["Add"] = ordered_kexts
 
         # Let's walk the Tools folder if it exists
         if not "Misc" in tree_dict or not isinstance(tree_dict["Misc"],dict):
             tree_dict["Misc"] = {"Tools":[]}
-        if not "Drivers" in tree_dict["Misc"] or not isinstance(tree_dict["Misc"]["Tools"],list):
+        if not "Tools" in tree_dict["Misc"] or not isinstance(tree_dict["Misc"]["Tools"],list):
             tree_dict["Misc"]["Tools"] = []
         if os.path.exists(oc_tools) and os.path.isdir(oc_tools):
             tools_list = []
@@ -1051,7 +1061,7 @@ class PlistWindow(tk.Toplevel):
                         # Save it
                         tools_list.append({
                             "Arguments":"",
-                            "Auxiliary":False,
+                            "Auxiliary":True,
                             "Name":name,
                             "Comment":name,
                             "Enabled":True,
@@ -1059,7 +1069,7 @@ class PlistWindow(tk.Toplevel):
                         })
             tools = [] if clean else tree_dict["Misc"]["Tools"]
             for tool in sorted(tools_list, key=lambda x: x.get("Path","").lower()):
-                if tool["Path"].lower() in [x.get("Path","").lower() for x in tool if isinstance(x,dict)]:
+                if tool["Path"].lower() in [x.get("Path","").lower() for x in tools if isinstance(x,dict)]:
                     # Already have it, skip
                     continue
                 # We need it, it seems
@@ -1398,6 +1408,41 @@ class PlistWindow(tk.Toplevel):
         self.update_all_children()
         self.alternate_colors()
 
+    def strip_disabled(self, event=None):
+        # Strips out dicts if they contain Enabled = False, or Disabled = True
+        nodes = self.iter_nodes(False)
+        root = self.get_root_node()
+        removedlist = []
+        for node in nodes:
+            name = str(self._tree.item(node,"text")).lower()
+            values = self.get_padded_values(node, 3)
+            value = values[1]
+            check_type = self.get_check_type(node).lower()
+            if check_type=="boolean" and (name=="enabled" and value=="False") or (name=="disabled" and value=="True"):
+                # Found one, remove its parent
+                rem_node = self._tree.parent(node)
+                if root in (node, rem_node):
+                    # Can't remove the root - skip it
+                    continue
+                removedlist.append({
+                    "type":"remove",
+                    "cell":rem_node,
+                    "from":self._tree.parent(rem_node),
+                    "index":self._tree.index(rem_node)
+                })
+                self._tree.detach(rem_node)
+        if not len(removedlist):
+            # Nothing removed
+            return
+        # We removed some, flush the changes, update the view,
+        # post the undo, and make sure we're edited
+        self.add_undo(removedlist)
+        if not self.edited:
+            self.edited = True
+            self.title(self.title()+" - Edited")
+        self.update_all_children()
+        self.alternate_colors()
+
     ###                       ###
     # Save/Load Plist Functions #
     ###                       ###
@@ -1549,6 +1594,25 @@ class PlistWindow(tk.Toplevel):
         try:
             clipboard_string = plist.dumps(self.nodes_to_values(node,None),sort_keys=self.controller.settings.get("sort_dict",False))
             # Get just the values
+            self.clipboard_clear()
+            self.clipboard_append(clipboard_string)
+        except:
+            pass
+
+    def copy_children(self, event = None):
+        node = self._tree.focus()
+        if node == "":
+            # Nothing to copy
+            return
+        try:
+            plist_data = self.nodes_to_values(node,None)
+            if isinstance(plist_data,dict) and len(plist_data):
+                # Set it to the first key's value
+                plist_data = plist_data[list(plist_data)[0]]
+            elif isinstance(plist_data,list) and len(plist_data):
+                # Set it to the first item of the array
+                plist_data = plist_data[0]
+            clipboard_string = plist.dumps(plist_data,sort_keys=self.controller.settings.get("sort_dict",False))
             self.clipboard_clear()
             self.clipboard_append(clipboard_string)
         except:
@@ -2157,33 +2221,38 @@ class PlistWindow(tk.Toplevel):
         # Build right click menu
         popup_menu = tk.Menu(self, tearoff=0)
         if self.get_check_type(cell).lower() in ["array","dictionary"]:
+            popup_menu.add_command(label="Expand Node", command=self.expand_node)
+            popup_menu.add_command(label="Collapse Node", command=self.collapse_node)
+            popup_menu.add_separator()
             popup_menu.add_command(label="Expand Children", command=self.expand_children)
             popup_menu.add_command(label="Collapse Children", command=self.collapse_children)
             popup_menu.add_separator()
         popup_menu.add_command(label="Expand All", command=self.expand_all)
         popup_menu.add_command(label="Collapse All", command=self.collapse_all)
         popup_menu.add_separator()
+        is_mac = sys.platform == "darwin"
         # Determine if we are adding a child or a sibling
         if cell in ("",self.get_root_node()):
             # Top level - get the Root
             if self.get_check_type(self.get_root_node()).lower() in ("array","dictionary"):
-                popup_menu.add_command(label="New top level entry (+)".format(self._tree.item(cell,"text")), command=lambda:self.new_row(self.get_root_node()))
+                popup_menu.add_command(label="New top level entry{}".format(" (+)" if is_mac else ""), command=lambda:self.new_row(self.get_root_node()),accelerator=None if is_mac else "(+)")
         else:
             if self.get_check_type(cell).lower() in ["array","dictionary"] and (self._tree.item(cell,"open") or not len(self._tree.get_children(cell))):
-                popup_menu.add_command(label="New child under '{}' (+)".format(self._tree.item(cell,"text")), command=lambda:self.new_row(cell))
+                popup_menu.add_command(label="New child under '{}'{}".format(self._tree.item(cell,"text")," (+)" if is_mac else ""), command=lambda:self.new_row(cell),accelerator=None if is_mac else "(+)")
                 popup_menu.add_command(label="New sibling of '{}'".format(self._tree.item(cell,"text")), command=lambda:self.new_row(cell,True))
-                popup_menu.add_command(label="Remove '{}' and any children (-)".format(self._tree.item(cell,"text")), command=lambda:self.remove_row(cell))
+                popup_menu.add_command(label="Remove '{}' and any children{}".format(self._tree.item(cell,"text")," (-)" if is_mac else ""), command=lambda:self.remove_row(cell),accelerator=None if is_mac else "(-)")
             else:
-                popup_menu.add_command(label="New sibling of '{}' (+)".format(self._tree.item(cell,"text")), command=lambda:self.new_row(cell))
-                popup_menu.add_command(label="Remove '{}' (-)".format(self._tree.item(cell,"text")), command=lambda:self.remove_row(cell))
+                popup_menu.add_command(label="New sibling of '{}'{}".format(self._tree.item(cell,"text")," (+)" if is_mac else ""), command=lambda:self.new_row(cell),accelerator=None if is_mac else "(+)")
+                popup_menu.add_command(label="Remove '{}'{}".format(self._tree.item(cell,"text")," (-)" if is_mac else ""), command=lambda:self.remove_row(cell),accelerator=None if is_mac else "(-)")
         # Add the copy and paste options
         popup_menu.add_separator()
-        sign = "Command" if str(sys.platform) == "darwin" else "Ctrl"
         c_state = "normal" if len(self._tree.selection()) else "disabled"
         try: p_state = "normal" if len(self.root.clipboard_get()) else "disabled"
         except: p_state = "disabled" # Invalid clipboard content
-        popup_menu.add_command(label="Copy ({}+C)".format(sign),command=self.copy_selection,state=c_state)
-        popup_menu.add_command(label="Paste ({}+V)".format(sign),command=self.paste_selection,state=p_state)
+        popup_menu.add_command(label="Copy{}".format(" (Cmd+C)" if is_mac else ""),command=self.copy_selection,state=c_state,accelerator=None if is_mac else "(Ctrl+C)")
+        if not cell in ("",self.get_root_node()) and self.get_check_type(cell).lower() in ["array","dictionary"]:
+            popup_menu.add_command(label="Copy Children", command=self.copy_children,state=c_state)
+        popup_menu.add_command(label="Paste{}".format(" (Cmd+V)" if is_mac else ""),command=self.paste_selection,state=p_state,accelerator=None if is_mac else "(Ctrl+V)")
         
         # Walk through the menu data if it exists
         cell_path = self.get_cell_path(cell)
@@ -2224,6 +2293,16 @@ class PlistWindow(tk.Toplevel):
         finally:
             popup_menu.grab_release()
 
+    def expand_node(self):
+        # Get selected node
+        cell = "" if not len(self._tree.selection()) else self._tree.selection()[0]
+        self._tree.item(cell,open=True)
+
+    def collapse_node(self):
+        # Get selected node
+        cell = "" if not len(self._tree.selection()) else self._tree.selection()[0]
+        self._tree.item(cell,open=False)
+
     def expand_all(self):
         # Get all nodes
         nodes = self.iter_nodes(False)
@@ -2251,7 +2330,7 @@ class PlistWindow(tk.Toplevel):
         # Get all children of the selected node
         cell = "" if not len(self._tree.selection()) else self._tree.selection()[0]
         nodes = self.iter_nodes(False, cell)
-        nodes.append(cell)
+        # nodes.append(cell)
         for node in nodes:
             self._tree.item(node,open=False)
         self.alternate_colors()

@@ -26,9 +26,9 @@ class ProperTree:
         self.tk.columnconfigure(3,weight=1)
         # Build the Hex <--> Base64 converter
         f_label = tk.Label(self.tk, text="From:")
-        f_label.grid(row=0,column=0)
+        f_label.grid(row=0,column=0,padx=10,pady=10)
         t_label = tk.Label(self.tk, text="To:")
-        t_label.grid(row=1,column=0)
+        t_label.grid(row=1,column=0,padx=10,pady=10)
 
         # Create the settings window
         self.settings_window = tk.Toplevel(self.tk)
@@ -134,25 +134,26 @@ class ProperTree:
             file_menu = tk.Menu(self.tk)
             main_menu = tk.Menu(self.tk)
             main_menu.add_cascade(label="File", menu=file_menu)
-            file_menu.add_command(label="New ({}N)".format(sign), command=self.new_plist)
-            file_menu.add_command(label="Open ({}O)".format(sign), command=self.open_plist)
-            file_menu.add_command(label="Save ({}S)".format(sign), command=self.save_plist)
-            file_menu.add_command(label="Save As ({}Shift+S)".format(sign), command=self.save_plist_as)
-            file_menu.add_command(label="Duplicate ({}D)".format(sign), command=self.duplicate_plist)
-            file_menu.add_command(label="Reload From Disk ({}L)".format(sign), command=self.reload_from_disk)
+            file_menu.add_command(label="New (Cmd+N)", command=self.new_plist)
+            file_menu.add_command(label="Open (Cmd+O)", command=self.open_plist)
+            file_menu.add_command(label="Save (Cmd+S)", command=self.save_plist)
+            file_menu.add_command(label="Save As... (Cmd+Shift+S)", command=self.save_plist_as)
+            file_menu.add_command(label="Duplicate (Cmd+D)", command=self.duplicate_plist)
+            file_menu.add_command(label="Reload From Disk (Cmd+L)", command=self.reload_from_disk)
             file_menu.add_separator()
-            file_menu.add_command(label="OC Snapshot ({}R)".format(sign), command=self.oc_snapshot)
-            file_menu.add_command(label="OC Clean Snapshot ({}Shift+R)".format(sign), command=self.oc_clean_snapshot)
+            file_menu.add_command(label="OC Snapshot (Cmd+R)", command=self.oc_snapshot)
+            file_menu.add_command(label="OC Clean Snapshot (Cmd+Shift+R)", command=self.oc_clean_snapshot)
             file_menu.add_separator()
-            file_menu.add_command(label="Convert Window ({}T)".format(sign), command=self.show_convert)
-            file_menu.add_command(label="Strip Comments ({}M)".format(sign), command=self.strip_comments)
+            file_menu.add_command(label="Convert Window (Cmd+T)", command=self.show_convert)
+            file_menu.add_command(label="Strip Comments (Cmd+M)", command=self.strip_comments)
+            file_menu.add_command(label="Strip Disabled Entries (Cmd+E)", command=self.strip_disabled)
             file_menu.add_separator()
-            file_menu.add_command(label="Toggle Find/Replace Pane ({}F)".format(sign),command=self.hide_show_find)
-            file_menu.add_command(label="Toggle Plist/Data Type Pane ({}P)".format(sign),command=self.hide_show_type)
+            file_menu.add_command(label="Settings (Cmd+,)",command=self.show_settings)
             file_menu.add_separator()
-            file_menu.add_command(label="Settings ({},)".format(sign),command=self.show_settings)
+            file_menu.add_command(label="Toggle Find/Replace Pane (Cmd+F)",command=self.hide_show_find)
+            file_menu.add_command(label="Toggle Plist/Data Type Pane (Cmd+P)",command=self.hide_show_type)
             file_menu.add_separator()
-            file_menu.add_command(label="Quit ({}Q)".format(sign), command=self.quit)
+            file_menu.add_command(label="Quit (Cmd+Q)", command=self.quit)
             self.tk.config(menu=main_menu)
 
         # Set bindings
@@ -167,6 +168,7 @@ class ProperTree:
         self.tk.bind_all("<{}-z>".format(key), self.undo)
         self.tk.bind_all("<{}-Z>".format(key), self.redo)
         self.tk.bind_all("<{}-m>".format(key), self.strip_comments)
+        self.tk.bind_all("<{}-e>".format(key), self.strip_disabled)
         self.tk.bind_all("<{}-r>".format(key), self.oc_snapshot)
         self.tk.bind_all("<{}-R>".format(key), self.oc_clean_snapshot)
         self.tk.bind_all("<{}-l>".format(key), self.reload_from_disk)
@@ -331,6 +333,16 @@ class ProperTree:
             return
         window.strip_comments(event)
 
+    def strip_disabled(self, event = None):
+        windows = self.stackorder(self.tk)
+        if not len(windows):
+            # Nothing to do
+            return
+        window = windows[-1] # Get the last item (most recent)
+        if window in self.default_windows:
+            return
+        window.strip_disabled(event)
+
     def change_to_type(self, value):
         self.to_type = value
         self.convert_values()
@@ -356,7 +368,7 @@ class ProperTree:
             from_value = from_value.replace(" ","").replace("<","").replace(">","")
             if [x for x in from_value if x.lower() not in "0123456789abcdef"]:
                 self.tk.bell()
-                mb.showerror("Invalid Hex Data","Invalid character in passed hex data.",parent=self.tk)
+                mb.showerror("Invalid Hex Data","Invalid character in passed hex data.") # ,parent=self.tk)
                 return
         try:
             if self.from_type.lower() == "decimal":
@@ -393,7 +405,7 @@ class ProperTree:
             self.t_text.configure(state='readonly')
         except Exception as e:
             self.tk.bell()
-            mb.showerror("Conversion Error",str(e),parent=self.tk)
+            mb.showerror("Conversion Error",str(e)) # ,parent=self.tk)
 
     ###                       ###
     # Save/Load Plist Functions #
@@ -479,10 +491,11 @@ class ProperTree:
         if len(windows) == 1 and windows[0] == self.start_window and windows[0].edited == False and windows[0].current_plist == None:
             # Fresh window - replace the contents
             current_window = windows[0]
-        path = fd.askopenfilename(title = "Select plist file") #,parent=current_window) # Apparently parent here breaks on 10.15?
+        path = fd.askopenfilename(title = "Select plist file") # ,parent=current_window) # Apparently parent here breaks on 10.15?
         if not len(path):
             # User cancelled - bail
             return None
+        path = os.path.realpath(os.path.expanduser(path))
         # Verify that no other window has that file selected already
         for window in windows:
             if window in self.default_windows:
@@ -492,7 +505,7 @@ class ProperTree:
                 window.focus_force()
                 window.update()
                 window.bell()
-                mb.showerror("File Already Open", "{} is already open here.".format(path), parent=window)
+                mb.showerror("File Already Open", "{} is already open here.".format(path)) # , parent=window)
                 return
         self.open_plist_with_path(event,path,current_window)
 
@@ -509,16 +522,18 @@ class ProperTree:
         except Exception as e:
             # Had an issue, throw up a display box
             self.tk.bell()
-            mb.showerror("An Error Occurred While Opening {}".format(os.path.basename(path)), str(e),parent=current_window)
+            mb.showerror("An Error Occurred While Opening {}".format(os.path.basename(path)), str(e)) # ,parent=current_window)
             return None
+        # Opened it correctly - let's load it, and set our values
+        if current_window:
+            current_window.open_plist(path,plist_data,plist_type,self.settings.get("expand_all_items_on_open",True))
         else:
-            # Opened it correctly - let's load it, and set our values
-            if current_window:
-                current_window.open_plist(path,plist_data,plist_type,self.settings.get("expand_all_items_on_open",True))
-            else:
-                # Need to create one first
-                plistwindow.PlistWindow(self, self.tk).open_plist(path,plist_data,plist_type,self.settings.get("expand_all_items_on_open",True))
-            return True
+            # Need to create one first
+            current_window = plistwindow.PlistWindow(self, self.tk)
+            current_window.open_plist(path,plist_data,plist_type,self.settings.get("expand_all_items_on_open",True))
+        current_window.focus_force()
+        current_window.update()
+        return True
 
     def stackorder(self, root):
         """return a list of root and toplevel windows in stacking order (topmost is last)"""
